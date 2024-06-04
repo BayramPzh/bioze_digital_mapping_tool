@@ -15,7 +15,7 @@ import plotly.figure_factory as ff
 # Constants
 PADDING = 0
 COLORMAP = 'magma'
-VIEW_STATE = pdk.ViewState(longitude=6.747489560596507, latitude=52.316862707395394, zoom=8, bearing=0, pitch=0)
+VIEW_STATE = pdk.ViewState(longitude=4.390, latitude=51.891, zoom=6, bearing=0, pitch=0)
 
 # Set page configuration
 st.set_page_config(page_title="Suitability Analysis", layout="wide")
@@ -50,7 +50,7 @@ d_to_nature = load_data('./hex/nature_v2.csv')
 d_to_water = load_data('./hex/water_v2.csv')
 d_to_urban = load_data('./hex/urban_v2.csv')
 d_to_inlet = load_data('./hex/inlet_v2.csv')
-d_to_pm25 = load_data('./csv/Provincie Zuid-Holland Luchtkwaliteit - Samen Meten Dashboard.csv')
+# d_to_pm25 = load_data('./csv/Provincie Zuid-Holland Luchtkwaliteit - Samen Meten Dashboard.csv')
 
 
 # Generate colormap
@@ -73,7 +73,7 @@ fuzzy_nature = fuzzify(d_to_nature, type='far')
 fuzzy_water = fuzzify(d_to_water, type='far')
 fuzzy_urban = fuzzify(d_to_urban, type='far')
 fuzzy_inlet = fuzzify(d_to_inlet, type='close')
-fuzzy_pm25 = fuzzify(d_to_pm25, type='close')  # or type='far',
+# fuzzy_pm25 = fuzzify(d_to_pm25, type='close')  # or type='far',
 
 # All arrays
 all_arrays = {'Farms': np.array(fuzzy_farm['fuzzy']), 
@@ -83,7 +83,8 @@ all_arrays = {'Farms': np.array(fuzzy_farm['fuzzy']),
               'Nature': np.array(fuzzy_nature['fuzzy']),
               'Water Bodies': np.array(fuzzy_water['fuzzy']),
               'Gas Inlets': np.array(fuzzy_inlet['fuzzy']),
-              'Pm25': np.array(fuzzy_pm25['fuzzy'])}
+            #   'Pm25': np.array(fuzzy_pm25['fuzzy'])
+            }
 
 # Create empty layer
 def create_empty_layer(d_to_farm):
@@ -231,7 +232,7 @@ def plot_suitability_variables():
     plot_variable(col2, "Urban and Residential Areas", fuzzy_urban, "The further away from urban and residential areas the higher the suitability.")
     plot_variable(col3, "Nature and Forest", fuzzy_nature, "The further away from natural areas and water bodies the higher the suitability.")
     plot_variable(col3, "Gas Inlets", fuzzy_inlet, "The closer to inlets the higher the suitability.")
-    plot_variable(col3, "Pm25", fuzzy_pm25, "The closer to pm25 the higher the suitability.")
+    # plot_variable(col3, "Pm25", fuzzy_pm25, "The closer to pm25 the higher the suitability.")
     col3.markdown(variable_legend_html, unsafe_allow_html=True)
 
 def plot_variable(column, title, data, help_text):
