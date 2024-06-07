@@ -1,4 +1,4 @@
-Station naam;Datum en tijd;Property;Regio;Gemeente;Value;Unit
+Station naam;Datum en tijd;Property;Regio;Gemeente;value;Unit
 NBI_SB918; 2024-06-03T13:00:00.000Z; pm25; ODH; Leidschendam-Voorburg; 6.20; ug/m3
 LUC_355523767661822; 2024-06-03T13:00:00.000Z; pm25; ODH; Pijnacker-Nootdorp; 5.87; ug/m3
 LUC_354444115474175; 2024-06-03T13:00:00.000Z; pm25; DCMR; Rotterdam; 0.00; ug/m3
