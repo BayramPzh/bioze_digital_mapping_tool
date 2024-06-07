@@ -15,10 +15,10 @@ import plotly.figure_factory as ff
 # Constants
 PADDING = 0
 COLORMAP = 'magma'
-VIEW_STATE = pdk.ViewState(longitude=4.390, latitude=51.891, zoom=6, bearing=0, pitch=0)
+VIEW_STATE = pdk.ViewState(longitude=4.390, latitude=51.891, zoom=8, bearing=0, pitch=0)
 
 # Set page configuration
-st.set_page_config(page_title="Suitability Analysis", layout="wide")
+st.set_page_config(page_title="Geschiktheids Analyse", layout="wide")
 
 # Set markdown
 st.markdown(
@@ -43,14 +43,14 @@ def load_gdf(gdf_path):
     return gpd.read_file(gdf_path).set_index('hex9')
 
 # Load dataframes
-d_to_farm = load_data('./hex/farm_v2.csv')
-d_to_road = load_data('./hex/road_v2.csv')
-d_to_industry = load_data('./hex/industry_v2.csv')
-d_to_nature = load_data('./hex/nature_v2.csv')
-d_to_water = load_data('./hex/water_v2.csv')
-d_to_urban = load_data('./hex/urban_v2.csv')
-d_to_inlet = load_data('./hex/inlet_v2.csv')
-# d_to_pm25 = load_data('./csv/Provincie Zuid-Holland Luchtkwaliteit - Samen Meten Dashboard.csv')
+d_to_farm = load_data('./hex/h3_farm_mock_data.csv')
+d_to_road = load_data('./hex/h3_indices_2.csv')
+d_to_industry = load_data('./hex/h3_indices_3.csv')
+d_to_nature = load_data('./hex/h3_indices_4.csv')
+d_to_water = load_data('./hex/h3_indices_5.csv')
+d_to_urban = load_data('./hex/h3_indices_6.csv')
+d_to_inlet = load_data('./hex/h3_indices_7.csv')
+# d_to_pm25 = load_data('./csv/pm25.csv')
 
 
 # Generate colormap
