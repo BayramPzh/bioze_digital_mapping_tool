@@ -1,3 +1,10 @@
+# The script is designed to be run as a standalone program
+
+# * It converts H3 indices to Shapely polygons and points
+# * converts a DataFrame with H3 spatial indices to a GeoDataFrame
+# * finds the nearest road network node for each point in a GeoDataFrame
+# * calculates an Origin-Destination (OD) matrix
+
 import networkx as nx
 import osmnx as ox
 import geopandas as gpd

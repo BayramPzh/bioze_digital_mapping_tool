@@ -1,3 +1,15 @@
+# The script is designed to be run as a standalone program.
+
+# It assigns capacity and capex to each location defines and solves the capacitated facility location problem, and finds farms that are not in the solution and plants that are in the solution
+
+# * plots the result of the optimization problem
+# * retrieves the results of the optimization problem
+# * generates a DataFrame for plotting ArcLayer on Pydeck
+# * maps values of a DataFrame to a Matplotlib color map
+# * generates a function that maps values to a Matplotlib color map
+# * applies a color mapping function to a DataFrame
+
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
