@@ -42,7 +42,8 @@ def find_closest_osmid(gdf, n):
     Finds the nearest road network node for each candidate site and each farm. 
     """
     gdf['closest_osmid'] = gdf['geometry'].apply(
-        lambda location: n.loc[n['geometry'] == nearest_points(location, n.unary_union)[1], 'osmid'].iloc[0])
+        lambda location: n.loc[n['geometry'] == nearest_points(location, n.unary_union)[1], 'osmid_original'].iloc[0])
+
 
 def calculate_od_matrix(farm_gdf, loi_gdf, cost_per_km=0.69, frequency_per_day=1, lifetime_in_days=1):
     """
