@@ -288,5 +288,5 @@ def perform_suitability_analysis():
 
 # Run the Streamlit app
 if __name__ == "__main__":
-    idx = load_gdf('./app_data/h3_polygons.shp')
+    idx = load_gdf('./app_data/h3_pzh_polygons.shp')
     main(idx)
