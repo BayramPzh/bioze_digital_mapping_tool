@@ -56,13 +56,10 @@ def calculate_od_matrix(farm_gdf, loi_gdf, cost_per_km=0.69, frequency_per_day=1
     # Calculate shortest path between all pair orig (farm) and dest (set of candidate digester sites)
     od_matrix = {origin: {destination: nx.shortest_path_length(g, origin, destination, weight='length') / 1000 for destination in dest} for origin in orig}
 
-    # Create a new nested dictionary with DataFrame indices as keys
-    new_nested_dict = {idx: od_matrix[row['closest_os']] for idx, row in farm_gdf.iterrows() if row['closest_os'] in od_matrix}
-
     # A placeholder that maps digester candidate site index with the index of its closest node
     placeholders = {i:j for i, j in zip(loi_gdf.index.values, loi_gdf['closest_os'])}
 
-    restructured_od = {farm: {index: distances.get(placeholder, None) for index, placeholder in placeholders.items()} for farm, distances in new_nested_dict.items()}
+    restructured_od = {farm: {index: distances.get(placeholder, None) for index, placeholder in placeholders.items()} for farm, distances in od_matrix.items() if farm in farm_gdf['closest_os'].values}
 
     new_dict = {(digester, farm): distance for farm, digester_distances in restructured_od.items() for digester, distance in digester_distances.items()}
    

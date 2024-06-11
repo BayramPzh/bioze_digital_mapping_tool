@@ -36,7 +36,11 @@ st.markdown(
 # Load data
 @st.cache_data
 def load_data(csv_path):
-    return pd.read_csv(csv_path)
+    df = pd.read_csv(csv_path)
+    # Ensure 'hex9' column exists
+    if 'hex9' not in df.columns:
+        df['hex9'] = df.index
+    return df
 
 @st.cache_data
 def load_gdf(gdf_path):
@@ -88,7 +92,7 @@ all_arrays = {'Farms': np.array(fuzzy_farm['fuzzy']),
 
 # Create empty layer
 def create_empty_layer(d_to_farm):
-    df_empty = d_to_farm[['hex9']]
+    df_empty = d_to_farm[['hex9']].copy()
     df_empty['color'] = '[0,0,0,0]'
     return df_empty
 
