@@ -36,25 +36,34 @@ st.markdown(
 # Load data
 @st.cache_data
 def load_data(csv_path):
-    df = pd.read_csv(csv_path)
-    # Ensure 'hex9' column exists
-    if 'hex9' not in df.columns:
-        df['hex9'] = df.index
-    return df
+    try:
+        return pd.read_csv(csv_path)
+    except FileNotFoundError:
+        print(f"File {csv_path} not found.")
+        return None
 
 @st.cache_data
 def load_gdf(gdf_path):
-    return gpd.read_file(gdf_path).set_index('hex9')
+    try:
+        return gpd.read_file(gdf_path).set_index('hex9')
+    except FileNotFoundError:
+        print(f"File {gdf_path} not found.")
+        return None
 
 # Load dataframes
 d_to_farm = load_data('./hex/h3_farm_mock_data.csv')
+# d_to_farm = load_data('./hex/farm_v2_pzh.csv')
 d_to_road = load_data('./hex/h3_indices_2.csv')
 d_to_industry = load_data('./hex/h3_indices_3.csv')
 d_to_nature = load_data('./hex/h3_indices_4.csv')
 d_to_water = load_data('./hex/h3_indices_5.csv')
 d_to_urban = load_data('./hex/h3_indices_6.csv')
 d_to_inlet = load_data('./hex/h3_indices_7.csv')
-# d_to_pm25 = load_data('./csv/pm25.csv')
+
+# Check if data is loaded correctly
+if d_to_farm is None or d_to_road is None or d_to_industry is None or d_to_nature is None or d_to_water is None or d_to_urban is None or d_to_inlet is None:
+    print("Error loading data.")
+    exit()
 
 
 # Generate colormap
@@ -92,7 +101,7 @@ all_arrays = {'Farms': np.array(fuzzy_farm['fuzzy']),
 
 # Create empty layer
 def create_empty_layer(d_to_farm):
-    df_empty = d_to_farm[['hex9']].copy()
+    df_empty = d_to_farm[['hex9']]
     df_empty['color'] = '[0,0,0,0]'
     return df_empty
 
