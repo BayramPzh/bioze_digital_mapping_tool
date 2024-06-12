@@ -56,26 +56,45 @@ def find_closest_osmid(gdf, n):
 
 def calculate_od_matrix(farm_gdf, loi_gdf, cost_per_km=0.69, frequency_per_day=1, lifetime_in_days=1):
     """
-    Finds the nearest road network node for each candidate site.
+    Finds the nearest road network node for each candidate site and calculates the cost matrix.
     """
+    # Load the graph
     g = ox.load_graphml('./osm_network/G.graphml') 
+
+    # Get unique origin and destination nodes
     orig = farm_gdf['closest_os'].unique().tolist()
     dest = loi_gdf['closest_os'].unique().tolist()
 
-    # Calculate shortest path between all pair orig (farm) and dest (set of candidate digester sites)
-    od_matrix = {origin: {destination: nx.shortest_path_length(g, origin, destination, weight='length') / 1000 for destination in dest} for origin in orig}
+    # Initialize the OD matrix
+    od_matrix = {}
 
-    # A placeholder that maps digester candidate site index with the index of its closest node
+    # Calculate shortest path between all pair orig (farm) and dest (set of candidate digester sites)
+    for origin in orig:
+        if origin in g.nodes:
+            od_matrix[origin] = {destination: nx.shortest_path_length(g, origin, destination, weight='length') / 1000 
+                                 for destination in dest if destination in g.nodes}
+
+    # Create a placeholder that maps digester candidate site index with the index of its closest node
     placeholders = {i:j for i, j in zip(loi_gdf.index.values, loi_gdf['closest_os'])}
 
-    restructured_od = {farm: {index: distances.get(placeholder, None) for index, placeholder in placeholders.items()} for farm, distances in od_matrix.items() if farm in farm_gdf['closest_os'].values}
+    # Restructure the OD matrix
+    restructured_od = {farm: {index: distances.get(placeholder, None) 
+                              for index, placeholder in placeholders.items()} 
+                       for farm, distances in od_matrix.items() if farm in farm_gdf['closest_os'].values}
 
-    new_dict = {(digester, farm): distance for farm, digester_distances in restructured_od.items() for digester, distance in digester_distances.items()}
-   
+    # Create a new dictionary with sorted keys
+    new_dict = {(digester, farm): distance 
+                for farm, digester_distances in restructured_od.items() 
+                for digester, distance in digester_distances.items()}
+
+    # Sort the transport cost dictionary
     transport_cost = dict(sorted(new_dict.items(), key=lambda x: x[0][0]))
 
     # Convert from distance to cost
-    C = {key: value * cost_per_km * frequency_per_day * lifetime_in_days for key, value in transport_cost.items()}
+    C = {key: value * cost_per_km * frequency_per_day * lifetime_in_days 
+         for key, value in transport_cost.items()}
+
+    # Get the list of plants
     plant = loi_gdf.index.tolist()
 
     return C, plant
