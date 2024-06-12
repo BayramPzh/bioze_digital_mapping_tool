@@ -5,6 +5,8 @@
 # * finds the nearest road network node for each point in a GeoDataFrame
 # * calculates an Origin-Destination (OD) matrix
 
+from sklearn.neighbors import BallTree
+import numpy as np
 import networkx as nx
 import osmnx as ox
 import geopandas as gpd
@@ -41,8 +43,15 @@ def find_closest_osmid(gdf, n):
     """
     Finds the nearest road network node for each candidate site and each farm. 
     """
-    gdf['closest_osmid'] = gdf['geometry'].apply(
-        lambda location: n.loc[n['geometry'] == nearest_points(location, n.unary_union)[1], 'osmid_original'].iloc[0])
+    # Create a BallTree for efficient nearest neighbor search
+    tree = BallTree(np.array(list(zip(n.y, n.x))), leaf_size=15, metric='haversine')
+
+    # Find the index of the closest point from 'n' for each point in 'gdf'
+    indices = tree.query(np.array(list(zip(gdf.geometry.y, gdf.geometry.x))), return_distance=False)
+
+    # Use the indices to map to the corresponding osmid
+    gdf['closest_osmid'] = n.iloc[indices.flatten()]['osmid_original'].values
+
     print(gdf)
 
 def calculate_od_matrix(farm_gdf, loi_gdf, cost_per_km=0.69, frequency_per_day=1, lifetime_in_days=1):
