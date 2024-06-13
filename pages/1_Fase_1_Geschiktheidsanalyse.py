@@ -138,7 +138,7 @@ def get_sites(fuzzy_df, w, g, idx):
         return None
 
 # Generate pydeck
-@st.cache_data
+@st.cache_resource
 def generate_pydeck(df, view_state=VIEW_STATE):
     return pdk.Deck(initial_view_state=view_state,
                     layers=[
@@ -249,6 +249,7 @@ def plot_suitability_variables():
     col3.markdown(variable_legend_html, unsafe_allow_html=True)
 
 def plot_variable(column, title, data, help_text):
+    # st.write(data)
     column.markdown(f"**{title}**", help=help_text)
     column.pydeck_chart(generate_pydeck(data), use_container_width=True)
 
