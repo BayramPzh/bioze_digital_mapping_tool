@@ -147,7 +147,7 @@ def get_sites(fuzzy_df, w, g, idx):
         H = g.subgraph(HH)
         subH = list(nx.connected_components(H))
         # filter_subH = [component for component in subH if len(component) > 10]
-        filter_subH = [component for component in subH if len(component) > 5]
+        filter_subH = [component for component in subH if len(component) > 2]
         site_idx = []
         for component in filter_subH:
             subgraph = H.subgraph(component)
@@ -316,7 +316,7 @@ def perform_suitability_analysis():
 
     if st.sidebar.button(':two: Resultaat Opslaan & Ga naar Fase 2', help="Klik om de huidige gefilterde locaties op te slaan voor verder onderzoek in ***Fase 2: Beleid Verkenner***."):
         st.session_state.loi = st.session_state.all_loi
-        st.switch_page("pages/2_Phase_2_Policy_Explorer.py")
+        st.switch_page("pages/2_Fase_2_Beleidsverkenner.py")
 
     hex_df = update_layer(selected_variables, all_arrays, d_to_farm)
     layers = get_layers(hex_df)
