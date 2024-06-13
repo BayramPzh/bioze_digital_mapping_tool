@@ -1,26 +1,45 @@
-import pandas as pd
+# Importing standard libraries
+from io import BytesIO
+
+# Importing third-party libraries
+import base64
 import geopandas as gpd
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+import pandas as pd
+import plotly.figure_factory as ff
 import pydeck as pdk
 import streamlit as st
-import numpy as np
-from utils.cflp_function import *
-import matplotlib.pyplot as plt
-from io import BytesIO
-import base64
-import networkx as nx
-from pysal.lib import weights
 from pysal.explore import esda
-import plotly.figure_factory as ff
+from pysal.lib import weights
+
+# Importing local application/library specific imports
+from utils.cflp_function import *
+
+#####
 
 # Constants
 PADDING = 0
 COLORMAP = 'magma'
 VIEW_STATE = pdk.ViewState(longitude=4.390, latitude=51.891, zoom=8, bearing=0, pitch=0)
+DATA_PATHS = {
+    'farm': './hex/h3_farm_mock_data.csv',
+    'road': './hex/h3_indices_2.csv',
+    'industry': './hex/h3_indices_3.csv',
+    'nature': './hex/h3_indices_4.csv',
+    'water': './hex/h3_indices_5.csv',
+    'urban': './hex/h3_indices_6.csv',
+    'inlet': './hex/h3_indices_7.csv',
+}
 
-# Set page configuration
+# Generating colormap
+color_mapping = generate_color_mapping(COLORMAP)
+
+# Setting page configuration
 st.set_page_config(page_title="Geschiktheids Analyse", layout="wide")
 
-# Set markdown
+# Setting markdown
 st.markdown(
     """
     <style>
@@ -33,41 +52,37 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Load data
-@st.cache_data
+#####
+
 def load_data(csv_path):
+    """Function to load data from a CSV file."""
     try:
         return pd.read_csv(csv_path)
     except FileNotFoundError:
-        print(f"File {csv_path} not found.")
-        return None
+        raise FileNotFoundError(f"File {csv_path} not found.")
 
-@st.cache_data
 def load_gdf(gdf_path):
+    """Function to load a GeoDataFrame from a file."""
     try:
         return gpd.read_file(gdf_path).set_index('hex9')
     except FileNotFoundError:
-        print(f"File {gdf_path} not found.")
-        return None
+        raise FileNotFoundError(f"File {gdf_path} not found.")
 
-# Load dataframes
-d_to_farm = load_data('./hex/h3_farm_mock_data.csv')
-# d_to_farm = load_data('./hex/h3_indices_copy.csv')
-d_to_road = load_data('./hex/h3_indices_2.csv')
-d_to_industry = load_data('./hex/h3_indices_3.csv')
-d_to_nature = load_data('./hex/h3_indices_4.csv')
-d_to_water = load_data('./hex/h3_indices_5.csv')
-d_to_urban = load_data('./hex/h3_indices_6.csv')
-d_to_inlet = load_data('./hex/h3_indices_7.csv')
+# Loading dataframes
+d_to_farm = load_data(DATA_PATHS['farm'])
+d_to_road = load_data(DATA_PATHS['road'])
+d_to_industry = load_data(DATA_PATHS['industry'])
+d_to_nature = load_data(DATA_PATHS['nature'])
+d_to_water = load_data(DATA_PATHS['water'])
+d_to_urban = load_data(DATA_PATHS['urban'])
+d_to_inlet = load_data(DATA_PATHS['inlet'])
 
-# Check if data is loaded correctly
+# Checking if data is loaded correctly
 if d_to_farm is None or d_to_road is None or d_to_industry is None or d_to_nature is None or d_to_water is None or d_to_urban is None or d_to_inlet is None:
     print("Error loading data.")
     exit()
 
-
-# Generate colormap
-color_mapping = generate_color_mapping(COLORMAP)
+#####
 
 # Fuzzify input variables
 @st.cache_data
@@ -78,7 +93,7 @@ def fuzzify(df, type="close", colormap_name=color_mapping):
     apply_color_mapping(df, 'fuzzy', color_mapping)
     return df
 
-# Fuzzify dataframes
+# Fuzzifying dataframes
 fuzzy_farm = fuzzify(d_to_farm, type='close')
 fuzzy_road = fuzzify(d_to_road, type='close')
 fuzzy_industry = fuzzify(d_to_industry, type='close')
@@ -89,15 +104,17 @@ fuzzy_inlet = fuzzify(d_to_inlet, type='close')
 # fuzzy_pm25 = fuzzify(d_to_pm25, type='close')  # or type='far',
 
 # All arrays
-all_arrays = {'Farms': np.array(fuzzy_farm['fuzzy']), 
-              'Road infrastructure': np.array(fuzzy_road['fuzzy']),
-              'Urban and residential areas': np.array(fuzzy_urban['fuzzy']), 
-              'Industrial areas': np.array(fuzzy_industry['fuzzy']), 
-              'Nature': np.array(fuzzy_nature['fuzzy']),
-              'Water Bodies': np.array(fuzzy_water['fuzzy']),
-              'Gas Inlets': np.array(fuzzy_inlet['fuzzy']),
+all_arrays = {'Boerderijen': np.array(fuzzy_farm['fuzzy']), 
+              'Weginfrastructuur': np.array(fuzzy_road['fuzzy']),
+              'Stedelijke en woongebieden': np.array(fuzzy_urban['fuzzy']), 
+              'Industriële gebieden': np.array(fuzzy_industry['fuzzy']), 
+              'Natuur': np.array(fuzzy_nature['fuzzy']),
+              'Waterlichamen': np.array(fuzzy_water['fuzzy']),
+              'Gasinlaten': np.array(fuzzy_inlet['fuzzy']),
             #   'Pm25': np.array(fuzzy_pm25['fuzzy'])
             }
+
+#####
 
 # Create empty layer
 def create_empty_layer(d_to_farm):
@@ -137,6 +154,8 @@ def get_sites(fuzzy_df, w, g, idx):
     else:
         return None
 
+#####
+
 # Generate pydeck
 @st.cache_resource
 def generate_pydeck(df, view_state=VIEW_STATE):
@@ -154,7 +173,8 @@ def generate_pydeck(df, view_state=VIEW_STATE):
                             get_fill_color ='color', 
                         ),
                     ],
-                    tooltip={"text": "Suitability:" f"{{fuzzy}}"})
+                    tooltip={"text": "Geschiktheid:" f"{{fuzzy}}"}
+    )
 
 # Create variable legend
 @st.cache_data
@@ -183,7 +203,7 @@ def generate_colormap_legend(label_left='Far', label_right='Near', cmap=plt.get_
     '''
     return legend_html
 
-variable_legend_html = generate_colormap_legend(label_left='Least Suitable (0)', label_right='Most Suitable (1)',)
+variable_legend_html = generate_colormap_legend(label_left='Minst Geschikt (0)', label_right='Meest Geschikt (1)',)
 
 # Get layers
 @st.cache_data
@@ -208,7 +228,17 @@ def plot_result(fig):
     if fig is not None:
         st.plotly_chart(fig, theme="streamlit")
 
-# Initialize session state
+#####
+
+### CREATE STREAMLIT ##
+def main(idx):
+    initialize_session_state(idx)
+    display_intro_text()
+    plot_suitability_variables()
+    perform_suitability_analysis()
+
+
+# Initialize session state | STAP 1
 def initialize_session_state(idx):
     if 'all_loi' not in st.session_state:
         st.session_state.all_loi = pd.DataFrame()
@@ -218,33 +248,33 @@ def initialize_session_state(idx):
         st.session_state.fig = None
     if 'w' not in st.session_state:
         st.session_state.w = weights.Queen.from_dataframe(idx, use_index=True)
+        # st.write(st.session_state.w)
     if 'g' not in st.session_state:
         st.session_state.g = nx.read_graphml('./app_data/g.graphml')
+        # st.write(st.session_state.g)
 
-### CREATE STREAMLIT ##
-def main(idx):
-    initialize_session_state(idx)
-    display_intro_text()
-    plot_suitability_variables()
-    perform_suitability_analysis()
 
+### STAP 2
 def display_intro_text():
-    st.markdown("### Phase 1: Suitability Analysis - Identify Candidate Sites for Large-scale Digester")
+    st.markdown("### Fase 1: Geschiktheidsanalyse - Potentiële Locaties voor Grootschalige Vergisters")
     st.markdown(
-        "Examine the maps below, each represents a pre-selected criterion deemed crucial for determining how suitable an area is for large digesters."
-        " Each area in the region is given a suitability score between 0 and 1, representing least and most suitable respectively."
-        " Tip: Click the question mark icon :grey_question: on top of each map for more information."
+        "Bekijk de onderstaande kaarten, elk vertegenwoordigt een vooraf geselecteerd criterium dat essentieel wordt geacht voor het bepalen van de geschiktheid van een gebied voor grootschalige vergisters.  "
+        " Elk gebied in de regio krijgt een geschiktheidsscore tussen 0 en 1, waarbij 0 het minst geschikt en 1 het meest geschikt vertegenwoordigt.  "
+        "<br>Tip: Klik op het vraagtekenpictogram :grey_question: boven elke kaart voor meer informatie.",
+        unsafe_allow_html=True
     )
 
+
+### STAP 3
 def plot_suitability_variables():
     col1, col2, col3 = st.columns(3)
-    plot_variable(col1, "Farm Locations", fuzzy_farm, "The closer to feedstocks the higher the suitability.")
-    plot_variable(col1, "Road Infrastructure", fuzzy_road, "The closer to roads the higher the suitability.")
-    plot_variable(col1, "Water Bodies", fuzzy_water, "The further away from water bodies the higher the suitability.")
-    plot_variable(col2, "Industrial Areas", fuzzy_industry, "The closer to industrial areas the higher the suitability.")
-    plot_variable(col2, "Urban and Residential Areas", fuzzy_urban, "The further away from urban and residential areas the higher the suitability.")
-    plot_variable(col3, "Nature and Forest", fuzzy_nature, "The further away from natural areas and water bodies the higher the suitability.")
-    plot_variable(col3, "Gas Inlets", fuzzy_inlet, "The closer to inlets the higher the suitability.")
+    plot_variable(col1, "Boerderij locaties", fuzzy_farm, "Hoe dichter bij voedingsstoffen, hoe geschikter.")
+    plot_variable(col1, "Weginfrastructuur", fuzzy_road, "Hoe dichter bij wegen, hoe geschikter.")
+    plot_variable(col1, "Waterlichamen", fuzzy_water, "Hoe verder weg van waterlichamen, hoe geschikter.")
+    plot_variable(col2, "Industriële Gebieden", fuzzy_industry, "Hoe dichter bij industriële gebieden, hoe geschikter.")
+    plot_variable(col2, "Stedelijke en Woongebieden", fuzzy_urban, "Hoe verder weg van stedelijke en woongebieden, hoe geschikter.")
+    plot_variable(col3, "Natuur en Bos", fuzzy_nature, "Hoe verder weg van natuurgebieden en waterlichamen, hoe geschikter.")
+    plot_variable(col3, "Gasinlaten", fuzzy_inlet, "Hoe dichter bij inlaten, hoe geschikter.")
     # plot_variable(col3, "Pm25", fuzzy_pm25, "The closer to pm25 the higher the suitability.")
     col3.markdown(variable_legend_html, unsafe_allow_html=True)
 
@@ -253,13 +283,15 @@ def plot_variable(column, title, data, help_text):
     column.markdown(f"**{title}**", help=help_text)
     column.pydeck_chart(generate_pydeck(data), use_container_width=True)
 
+
+### STAP 4
 def perform_suitability_analysis():
     with st.sidebar.form("suitability_analysis_form"):
-        selected_variables = st.multiselect(":one: Select Criteria", list(all_arrays.keys()))
-        submit_button = st.form_submit_button("Build Suitability Map")
+        selected_variables = st.multiselect(":one: Selecteer Criteria", list(all_arrays.keys()))
+        submit_button = st.form_submit_button("Bouw Geschiktheidskaart")
 
     if submit_button and not selected_variables:
-        st.warning("No variable selected.")
+        st.warning("Geen variabele geselecteerd.")
         return
 
     if submit_button:
@@ -272,12 +304,12 @@ def perform_suitability_analysis():
         else:
             st.write("st.session_state.all_loi['fuzzy'] is empty.")
 
-    st.markdown("### **Suitability Map**")
+    st.markdown("### **Geschiktheidskaart**")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown(f"**Number of Candidate Sites: {len(st.session_state['all_loi'])}**")
+        st.markdown(f"**Aantal Potentiële Locaties: {len(st.session_state['all_loi'])}**")
 
-    if st.sidebar.button(':two: Save Result & Enter Phase 2', help="Click to save the current filtered locations for further exploration in ***Phase 2: Policy Explorer***."):
+    if st.sidebar.button(':two: Resultaat Opslaan & Ga naar Fase 2', help="Klik om de huidige gefilterde locaties op te slaan voor verder onderzoek in ***Fase 2: Beleid Verkenner***."):
         st.session_state.loi = st.session_state.all_loi
         st.switch_page("pages/2_Phase_2_Policy_Explorer.py")
 
@@ -302,6 +334,7 @@ def perform_suitability_analysis():
     deck = pdk.Deck(layers=layers, initial_view_state=VIEW_STATE, tooltip={"text": "Suitability: {fuzzy}"})
     st.pydeck_chart(deck, use_container_width=True)
     st.markdown(variable_legend_html, unsafe_allow_html=True)
+
 
 
 # Run the Streamlit app
