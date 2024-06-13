@@ -51,8 +51,8 @@ def load_gdf(gdf_path):
         return None
 
 # Load dataframes
-# d_to_farm = load_data('./hex/h3_farm_mock_data.csv')
-d_to_farm = load_data('./hex/h3_indices_copy.csv')
+d_to_farm = load_data('./hex/h3_farm_mock_data.csv')
+# d_to_farm = load_data('./hex/h3_indices_copy.csv')
 d_to_road = load_data('./hex/h3_indices_2.csv')
 d_to_industry = load_data('./hex/h3_indices_3.csv')
 d_to_nature = load_data('./hex/h3_indices_4.csv')
