@@ -121,7 +121,7 @@ def update_layer(selected_variables, all_arrays, d_to_farm):
 # Filter potential digester locations
 def get_sites(fuzzy_df, w, g, idx):
     if 'fuzzy' in fuzzy_df.columns:
-        fuzzy_df = fuzzy_df.set_index('hex9').reindex(idx.index)
+        fuzzy_df = fuzzy_df.drop_duplicates(subset='hex9').set_index('hex9').reindex(idx.index)
         lisa = esda.Moran_Local(fuzzy_df['fuzzy'], w, seed=42)
         HH = fuzzy_df[(lisa.q == 1) & (lisa.p_sim < 0.01)].index.to_list()
         H = g.subgraph(HH)
@@ -265,9 +265,12 @@ def perform_suitability_analysis():
     if submit_button:
         hex_df = update_layer(selected_variables, all_arrays, d_to_farm)
         get_sites(hex_df, st.session_state.w, st.session_state.g, idx)
-        fig = ff.create_distplot([st.session_state.all_loi['fuzzy'].tolist()], ['Distribution'], show_hist=False, bin_size=0.02)
-        fig.update_layout(autosize=True, width=600, height=400)
-        st.session_state.fig = fig
+        if not st.session_state.all_loi['fuzzy'].empty:
+            fig = ff.create_distplot([st.session_state.all_loi['fuzzy'].tolist()], ['Distribution'], show_hist=False, bin_size=0.02)
+            fig.update_layout(autosize=True, width=600, height=400)
+            st.session_state.fig = fig
+        else:
+            st.write("st.session_state.all_loi['fuzzy'] is empty.")
 
     st.markdown("### **Suitability Map**")
     col1, col2, col3 = st.columns(3)
@@ -299,6 +302,7 @@ def perform_suitability_analysis():
     deck = pdk.Deck(layers=layers, initial_view_state=VIEW_STATE, tooltip={"text": "Suitability: {fuzzy}"})
     st.pydeck_chart(deck, use_container_width=True)
     st.markdown(variable_legend_html, unsafe_allow_html=True)
+
 
 # Run the Streamlit app
 if __name__ == "__main__":
