@@ -138,12 +138,16 @@ def update_layer(selected_variables, all_arrays, d_to_farm):
 # Filter potential digester locations
 def get_sites(fuzzy_df, w, g, idx):
     if 'fuzzy' in fuzzy_df.columns:
+        # fuzzy_df = fuzzy_df.set_index('hex9').reindex(idx.index)
         fuzzy_df = fuzzy_df.drop_duplicates(subset='hex9').set_index('hex9').reindex(idx.index)
+        # st.write(fuzzy_df)
         lisa = esda.Moran_Local(fuzzy_df['fuzzy'], w, seed=42)
-        HH = fuzzy_df[(lisa.q == 1) & (lisa.p_sim < 0.01)].index.to_list()
+        # HH = fuzzy_df[(lisa.q == 1) & (lisa.p_sim < 0.01)].index.to_list()
+        HH = fuzzy_df[(lisa.p_sim < 0.05)].index.to_list()
         H = g.subgraph(HH)
         subH = list(nx.connected_components(H))
-        filter_subH = [component for component in subH if len(component) > 10]
+        # filter_subH = [component for component in subH if len(component) > 10]
+        filter_subH = [component for component in subH if len(component) > 5]
         site_idx = []
         for component in filter_subH:
             subgraph = H.subgraph(component)
@@ -151,6 +155,7 @@ def get_sites(fuzzy_df, w, g, idx):
             max_node_index = max(eigenvector_centrality, key=eigenvector_centrality.get)
             site_idx.append(max_node_index)
         st.session_state.all_loi = fuzzy_df.loc[site_idx].reset_index()
+        st.write(st.session_state.all_loi)
     else:
         return None
 
