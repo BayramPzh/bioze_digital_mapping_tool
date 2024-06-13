@@ -65,6 +65,9 @@ def calculate_od_matrix(farm_gdf, loi_gdf, cost_per_km=0.69, frequency_per_day=1
     orig = farm_gdf['closest_os'].unique().tolist()
     dest = loi_gdf['closest_os'].unique().tolist()
 
+    print(f"Unique origin nodes: {orig}")
+    print(f"Unique destination nodes: {dest}")
+
     # Initialize the OD matrix
     od_matrix = {}
 
@@ -73,6 +76,8 @@ def calculate_od_matrix(farm_gdf, loi_gdf, cost_per_km=0.69, frequency_per_day=1
         if origin in g.nodes:
             od_matrix[origin] = {destination: nx.shortest_path_length(g, origin, destination, weight='length') / 1000 
                                  for destination in dest if destination in g.nodes}
+        else:
+            print(f"Origin node {origin} is not in the graph.")
 
     # Create a placeholder that maps digester candidate site index with the index of its closest node
     placeholders = {i:j for i, j in zip(loi_gdf.index.values, loi_gdf['closest_os'])}
