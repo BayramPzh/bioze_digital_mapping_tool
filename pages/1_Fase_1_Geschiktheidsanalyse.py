@@ -138,26 +138,67 @@ def update_layer(selected_variables, all_arrays, d_to_farm):
 # Filter potential digester locations
 def get_sites(fuzzy_df, w, g, idx):
     if 'fuzzy' in fuzzy_df.columns:
-        # fuzzy_df = fuzzy_df.set_index('hex9').reindex(idx.index)
-        fuzzy_df = fuzzy_df.drop_duplicates(subset='hex9').set_index('hex9').reindex(idx.index)
-        # st.write(fuzzy_df)
+        # Drop duplicates and set index
+        fuzzy_df.drop_duplicates(subset='hex9', inplace=True)
+        fuzzy_df.set_index('hex9', inplace=True)
+        fuzzy_df = fuzzy_df.reindex(idx.index)
+
+        # Compute local Moran's I
         lisa = esda.Moran_Local(fuzzy_df['fuzzy'], w, seed=42)
+
+        # Get significant locations
         # HH = fuzzy_df[(lisa.q == 1) & (lisa.p_sim < 0.01)].index.to_list()
-        HH = fuzzy_df[(lisa.p_sim < 0.05)].index.to_list()
+        HH = fuzzy_df[lisa.p_sim < 0.01].index.to_list()
+        # st.write(HH)
+        # st.write(g)
+
+        ###
+        # # Check if nodes in HH are in g
+        # missing_nodes = [node for node in HH if node not in g.nodes]
+        # st.write(f"Missing nodes: {missing_nodes}")
+
+        # # Build subgraph
         H = g.subgraph(HH)
-        subH = list(nx.connected_components(H))
-        # filter_subH = [component for component in subH if len(component) > 10]
-        filter_subH = [component for component in subH if len(component) > 2]
-        site_idx = []
-        for component in filter_subH:
-            subgraph = H.subgraph(component)
-            eigenvector_centrality = nx.eigenvector_centrality(subgraph, max_iter=1500)
-            max_node_index = max(eigenvector_centrality, key=eigenvector_centrality.get)
-            site_idx.append(max_node_index)
-        st.session_state.all_loi = fuzzy_df.loc[site_idx].reset_index()
+
+        # Create a dummy MultiDiGraph for H
+        H = nx.MultiDiGraph()
+        H.add_edges_from([
+            ("891f1655aa3ffff", "891f1655aa7ffff"), 
+            ("891f1655bd3ffff", "891f1655bd7ffff"), 
+            ("891f1655b8bffff", "891f1655ab7ffff"), 
+            ("891f1655a87ffff", "891f1655ab3ffff"), 
+            ("891f1655a93ffff", "891f1655a97ffff"),
+            ("891f1655a97ffff", "891f1655aa3ffff"),
+            ("891f1655ab7ffff", "891f1655a87ffff"),
+            ("891f1655a87ffff", "891f1655a93ffff"),
+            ("891f1655a93ffff", "891f1655aa3ffff"),
+            ("891f1655aa3ffff", "891f1655ab7ffff")
+        ])
+        ###
+
+        st.write(H)
+        H_undirected = H.to_undirected()
+        H_undirected = nx.Graph(H_undirected)
+
+        # Get connected components
+        subH = [component for component in nx.connected_components(H_undirected) if len(component) > 1]
+        st.write(subH)
+        
+        # Now you can calculate eigenvector centrality
+        site_idx = [max(nx.eigenvector_centrality(H_undirected.subgraph(component), max_iter=1500), key=nx.eigenvector_centrality(H_undirected.subgraph(component), max_iter=1500).get) for component in subH]
         st.write(st.session_state.all_loi)
+
+        ###
+        # Check if 'fuzzy' column has multiple elements
+        if len(st.session_state.all_loi['fuzzy']) > 1:
+            fig = ff.create_distplot([st.session_state.all_loi['fuzzy'].tolist()], ['Distribution'], show_hist=False, bin_size=0.02)
+        else:
+            st.write("Not enough data to create a distribution plot.")
+        ###
+
     else:
         return None
+
 
 #####
 
@@ -255,8 +296,7 @@ def initialize_session_state(idx):
         st.session_state.w = weights.Queen.from_dataframe(idx, use_index=True)
         # st.write(st.session_state.w)
     if 'g' not in st.session_state:
-        st.session_state.g = nx.read_graphml('./app_data/g.graphml')
-        # st.write(st.session_state.g)
+        st.session_state.g = nx.read_graphml('./osm_network/G.graphml')
 
 
 ### STAP 2
@@ -344,5 +384,5 @@ def perform_suitability_analysis():
 
 # Run the Streamlit app
 if __name__ == "__main__":
-    idx = load_gdf('./app_data/h3_pzh_polygons.shp')
+    idx = load_gdf('./app_data/h3_polygons.shp')
     main(idx)
