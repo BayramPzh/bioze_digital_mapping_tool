@@ -136,77 +136,75 @@ def update_layer(selected_variables, all_arrays, d_to_farm):
     return hex_df
 
 # Filter potential digester locations
-def get_sites(fuzzy_df, w, g, idx):
-    # Check if 'fuzzy' column exists in the DataFrame
-    if 'fuzzy' not in fuzzy_df.columns:
-        st.error("The DataFrame does not contain a 'fuzzy' column.")
+def get_sites(df: pd.DataFrame, w, g, idx, score_column='fuzzy', seed=42):
+    """
+    Analyzes potential digester locations based on suitability scores and spatial factors.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing a column with suitability scores.
+        w (pysal.W): Spatial weights object for spatial analysis.
+        g (networkx.Graph): Graph object for network analysis.
+        idx (pd.DataFrame): DataFrame with potential digester locations (indexed by "hex9").
+        score_column (str, optional): Name of the column containing suitability scores. Defaults to 'fuzzy'.
+        seed (int, optional): Seed for random number generator. Defaults to 42.
+
+    Returns:
+        pd.Index: Index of the most central locations within significant suitability clusters.
+
+    Raises:
+        ValueError: If errors occur during spatial analysis.
+    """
+
+    # Input Validation
+    if score_column not in df.columns:
+        st.error(f"The DataFrame does not contain a '{score_column}' column.")
         return None
-
-    # Drop duplicates based on 'hex9' and set it as index
-    fuzzy_df = fuzzy_df.drop_duplicates(subset='hex9').set_index('hex9')
-    st.text(fuzzy_df)
-
-    # Convert 'geometry' to WKT format if it exists
-    if 'geometry' in fuzzy_df.columns:
-        fuzzy_df['geometry'] = fuzzy_df['geometry'].apply(lambda geom: geom.wkt)
-    st.text(fuzzy_df)
-
-    # Check if idx is a DataFrame and has 'hex9' as index
     if not isinstance(idx, pd.DataFrame) or idx.index.name != 'hex9':
         st.error("The idx should be a pandas DataFrame with 'hex9' as index.")
         return None
 
-    # Drop duplicates from idx.index before reindexing
+    # Data Cleaning and Preprocessing
+    df = df.drop_duplicates(subset='hex9').set_index('hex9')
+    st.write(df)
+    if 'geometry' in df.columns:
+        df['geometry'] = df['geometry'].apply(lambda geom: geom.wkt)
     unique_idx = idx.index.drop_duplicates()
-    st.text(unique_idx)
+    st.write(unique_idx)
+    df = df.reindex(unique_idx)
+    st.write(df)
+    if 'geometry' in df.columns:
+        df['geometry'] = gpd.GeoSeries(df['geometry']).to_wkt()
 
-    # Merge fuzzy_df with idx keeping only the indices in both
-    fuzzy_df = fuzzy_df.reindex(unique_idx)
-    st.text(fuzzy_df)
-
-    # Convert 'geometry' to WKT format again if it exists
-    if 'geometry' in fuzzy_df.columns:
-        fuzzy_df['geometry'] = gpd.GeoSeries(fuzzy_df['geometry']).to_wkt()
-
-    # Compute local Moran's I
+    # Spatial Analysis with Error Handling
     try:
-        lisa = esda.Moran_Local(fuzzy_df['fuzzy'], w, seed=42)
+        lisa = esda.Moran_Local(df[score_column], w, seed=seed)
     except ValueError as e:
         st.error(f"Error computing Moran's I: {str(e)}")
         return None
 
-    # Get significant locations
-    HH = fuzzy_df[lisa.p_sim < 0.01].index.to_list()
+    # Identify Significant Locations
+    significant_locations = df[lisa.p_sim < 0.01].index.to_list()
 
-    # Build subgraph with significant locations
-    H = g.subgraph(HH)
-
-    # Convert to undirected graph and get connected components
+    # Network Analysis
+    H = g.subgraph(significant_locations)
+    st.write(H)
     H_undirected = nx.Graph(H.to_undirected())
-    subH = [component for component in nx.connected_components(H_undirected) if len(component) > 1]
+    st.write(H_undirected)
+    connected_components = [component for component in nx.connected_components(H_undirected) if len(component) > 1]
+    st.write(connected_components)
+    filtered_components = [component for component in connected_components if len(component) > 2]
+    st.write(filtered_components)
 
-    # Filter subH to only include components with more than 2 nodes
-    filter_subH = [component for component in subH if len(component) > 2]
-
-    # Calculate eigenvector centrality for each connected component
-    site_idx = []
-    for component in filter_subH:
-        # Create a subgraph for the current connected component
+    # Calculate Eigenvector Centrality for Each Component
+    central_locations = []
+    for component in filtered_components:
         subgraph = H.subgraph(component)
-        # Calculate eigenvector centrality for a connected graph
         eigenvector_centrality = nx.eigenvector_centrality(subgraph, max_iter=1500)
-        # Get the node index with the highest eigenvector centrality in that connected graph
-        max_node_index = max(eigenvector_centrality, key=eigenvector_centrality.get)
-        # Append the node index to a list
-        site_idx.append(max_node_index)
+        most_central_node = max(eigenvector_centrality, key=eigenvector_centrality.get)
+        central_locations.append(most_central_node)
+    
+    st.session_state.all_loi = df.loc[central_locations].reset_index()
 
-    # Check if 'fuzzy' column exists in st.session_state.all_loi and has multiple elements
-    if 'fuzzy' in st.session_state.all_loi.columns and not st.session_state.all_loi['fuzzy'].empty:
-        fig = ff.create_distplot([st.session_state.all_loi['fuzzy'].tolist()], ['Distribution'], show_hist=False, bin_size=0.02)
-    else:
-        st.write("Not enough data to create a distribution plot.")
-
-    return None
 
 
 
