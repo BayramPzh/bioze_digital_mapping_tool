@@ -168,7 +168,9 @@ def get_sites(df, w, g, idx,
 
     # Informative logging
     st.write("Dataframe after dropping duplicates and setting index:")
+    st.write("Index of df dataframe:")
     st.write(df.index)
+    st.write("Head of df dataframe:")
     st.write(df.head())
 
     # Ensure all "hex9" values from df are present in the index
