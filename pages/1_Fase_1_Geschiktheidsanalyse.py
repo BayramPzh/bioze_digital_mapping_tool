@@ -136,7 +136,7 @@ def update_layer(selected_variables, all_arrays, d_to_farm):
     return hex_df
 
 # Filter potential digester locations
-def get_sites(df: pd.DataFrame, w, g, idx, score_column='fuzzy', seed=42):
+def get_sites(df: pd.DataFrame, w, g, idx, score_column='fuzzy', seed=42) -> pd.DataFrame:
     """
     Analyzes potential digester locations based on suitability scores and spatial factors.
 
@@ -149,7 +149,7 @@ def get_sites(df: pd.DataFrame, w, g, idx, score_column='fuzzy', seed=42):
         seed (int, optional): Seed for random number generator. Defaults to 42.
 
     Returns:
-        pd.Index: Index of the most central locations within significant suitability clusters.
+        pd.DataFrame: DataFrame containing the most central locations within significant suitability clusters.
 
     Raises:
         ValueError: If errors occur during spatial analysis.
@@ -158,29 +158,39 @@ def get_sites(df: pd.DataFrame, w, g, idx, score_column='fuzzy', seed=42):
     # Input Validation
     if score_column not in df.columns:
         st.error(f"The DataFrame does not contain a '{score_column}' column.")
-        return None
+        return pd.DataFrame()
     if not isinstance(idx, pd.DataFrame) or idx.index.name != 'hex9':
         st.error("The idx should be a pandas DataFrame with 'hex9' as index.")
-        return None
+        return pd.DataFrame()
 
-    # Data Cleaning and Preprocessing
+    # Data Cleaning and Preprocessing (Improved handling of missing values)
     df = df.drop_duplicates(subset='hex9').set_index('hex9')
-    st.write(df)
+    st.write("df after drop_duplicates and set_index:")
+    print(df.head())  # Debugging: Print to inspect data
+
     if 'geometry' in df.columns:
         df['geometry'] = df['geometry'].apply(lambda geom: geom.wkt)
-    unique_idx = idx.index.drop_duplicates()
-    st.write(unique_idx)
-    df = df.reindex(unique_idx)
-    st.write(df)
+    # Ensure all "hex9" values from df are present in the index
+    unique_idx = df.index.intersection(idx.index)
+
+    # Handle empty unique_idx (Optional informative message)
+    if unique_idx.empty:
+        st.warning("No overlapping 'hex9' values found between df and idx. This might indicate data source inconsistencies. Check data quality and 'hex9' formatting.")
+        return pd.DataFrame()
+
+    df = df.loc[unique_idx]  # Reindex df based on the intersection
+    st.write("df after reindexing with unique_idx:")
+    print(df.head())  # Debugging: Print to inspect data
+
     if 'geometry' in df.columns:
-        df['geometry'] = gpd.GeoSeries(df['geometry']).to_wkt()
+        df['geometry'] = gpd.GeoSeries(df['geometry']).to_shapely()  # Assuming conversion to shapely format
 
     # Spatial Analysis with Error Handling
     try:
-        lisa = esda.Moran_Local(df[score_column], w, seed=seed)
+        lisa = Moran_Local(df[score_column], w, seed=seed)
     except ValueError as e:
         st.error(f"Error computing Moran's I: {str(e)}")
-        return None
+        return pd.DataFrame()
 
     # Identify Significant Locations
     significant_locations = df[lisa.p_sim < 0.01].index.to_list()
@@ -202,8 +212,16 @@ def get_sites(df: pd.DataFrame, w, g, idx, score_column='fuzzy', seed=42):
         eigenvector_centrality = nx.eigenvector_centrality(subgraph, max_iter=1500)
         most_central_node = max(eigenvector_centrality, key=eigenvector_centrality.get)
         central_locations.append(most_central_node)
-    
-    st.session_state.all_loi = df.loc[central_locations].reset_index()
+
+    # Check if 'fuzzy' exists in st.session_state.all_loi
+    if 'fuzzy' in st.session_state.all_loi.columns:
+        if not st.session_state.all_loi['fuzzy'].empty:
+            st.session_state.all_loi = df.loc[central_locations].reset_index()
+        else:
+            st.write("st.session_state.all_loi['fuzzy'] is empty.")
+    else:
+        st.write("'fuzzy' does not exist in st.session_state.all_loi.")
+
 
 
 
@@ -339,6 +357,9 @@ def plot_variable(column, title, data, help_text):
 
 ### STAP 4
 def perform_suitability_analysis():
+    """
+        Performs suitability analysis based on selected criteria and visualizes results.
+    """
     with st.sidebar.form("suitability_analysis_form"):
         selected_variables = st.multiselect(":one: Selecteer Criteria", list(all_arrays.keys()))
         submit_button = st.form_submit_button("Bouw Geschiktheidskaart")
@@ -349,13 +370,16 @@ def perform_suitability_analysis():
 
     if submit_button:
         hex_df = update_layer(selected_variables, all_arrays, d_to_farm)
-        get_sites(hex_df, st.session_state.w, st.session_state.g, idx)
-        if not st.session_state.all_loi['fuzzy'].empty:
-            fig = ff.create_distplot([st.session_state.all_loi['fuzzy'].tolist()], ['Distribution'], show_hist=False, bin_size=0.02)
+
+        # Improved data handling in get_sites
+        all_loi = get_sites(hex_df, st.session_state.w, st.session_state.g, idx)
+        if not all_loi.empty:
+            st.session_state.all_loi = all_loi
+            fig = ff.create_distplot([all_loi['fuzzy'].tolist()], ['Distribution'], show_hist=False, bin_size=0.02)
             fig.update_layout(autosize=True, width=600, height=400)
             st.session_state.fig = fig
         else:
-            st.write("st.session_state.all_loi['fuzzy'] is empty.")
+            st.write("No suitable locations identified based on selected criteria.")
 
     st.markdown("### **Geschiktheidskaart**")
     col1, col2, col3 = st.columns(3)
