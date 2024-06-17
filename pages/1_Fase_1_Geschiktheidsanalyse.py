@@ -136,7 +136,8 @@ def update_layer(selected_variables, all_arrays, d_to_farm):
     return hex_df
 
 # Filter potential digester locations
-def get_sites(df: pd.DataFrame, w, g, idx, score_column='fuzzy', seed=42) -> pd.DataFrame:
+def get_sites(df, w, g, idx,
+              score_column='fuzzy', seed=42) -> pd.DataFrame:
     """
     Analyzes potential digester locations based on suitability scores and spatial factors.
 
@@ -152,65 +153,68 @@ def get_sites(df: pd.DataFrame, w, g, idx, score_column='fuzzy', seed=42) -> pd.
         pd.DataFrame: DataFrame containing the most central locations within significant suitability clusters.
 
     Raises:
-        ValueError: If errors occur during spatial analysis.
+        ValueError: If errors occur during data validation, spatial analysis, or no overlapping "hex9" values are found.
     """
 
     # Input Validation
     if score_column not in df.columns:
-        st.error(f"The DataFrame does not contain a '{score_column}' column.")
-        return pd.DataFrame()
+        raise ValueError(f"The DataFrame does not contain a '{score_column}' column.")
     if not isinstance(idx, pd.DataFrame) or idx.index.name != 'hex9':
-        st.error("The idx should be a pandas DataFrame with 'hex9' as index.")
-        return pd.DataFrame()
+        raise ValueError("The idx should be a pandas DataFrame with 'hex9' as index.")
 
     # Data Cleaning and Preprocessing (Improved handling of missing values)
+    df.dropna(subset=[score_column], inplace=True)  # Handle missing values
     df = df.drop_duplicates(subset='hex9').set_index('hex9')
-    st.write("df after drop_duplicates and set_index:")
-    print(df.head())  # Debugging: Print to inspect data
 
-    if 'geometry' in df.columns:
-        df['geometry'] = df['geometry'].apply(lambda geom: geom.wkt)
+    # Informative logging
+    st.write("Dataframe after dropping duplicates and setting index:")
+    st.write(df.index)
+    st.write(df.head())
+
     # Ensure all "hex9" values from df are present in the index
     unique_idx = df.index.intersection(idx.index)
 
-    # Handle empty unique_idx (Optional informative message)
+    # Informative logging
+    st.write("Index of idx dataframe:")
+    st.write(idx.index)
+    st.write("Head of idx dataframe:")
+    st.write(idx.head())
+
     if unique_idx.empty:
-        st.warning("No overlapping 'hex9' values found between df and idx. This might indicate data source inconsistencies. Check data quality and 'hex9' formatting.")
-        return pd.DataFrame()
+        raise ValueError("No overlapping 'hex9' values found between df and idx. Check data quality and 'hex9' formatting.")
 
     df = df.loc[unique_idx]  # Reindex df based on the intersection
-    st.write("df after reindexing with unique_idx:")
-    print(df.head())  # Debugging: Print to inspect data
+
+    # Informative logging
+    st.write("Dataframe after reindexing with unique_idx:")
+    st.write(df.head())  # Print to console for debugging
 
     if 'geometry' in df.columns:
-        df['geometry'] = gpd.GeoSeries(df['geometry']).to_shapely()  # Assuming conversion to shapely format
+        df['geometry'] = gpd.GeoSeries(df['geometry']).to_shapely()
 
-    # Spatial Analysis with Error Handling
+    # Spatial Analysis with Error Handling (using a try-except block)
     try:
-        lisa = Moran_Local(df[score_column], w, seed=seed)
+        lisa = esda.Moran_Local(df[score_column], w, seed=seed)
     except ValueError as e:
-        st.error(f"Error computing Moran's I: {str(e)}")
-        return pd.DataFrame()
+        raise ValueError(f"Error computing Moran's I: {str(e)}") from e  # Propagate original error
 
     # Identify Significant Locations
     significant_locations = df[lisa.p_sim < 0.01].index.to_list()
 
     # Network Analysis
     H = g.subgraph(significant_locations)
-    st.write(H)
     H_undirected = nx.Graph(H.to_undirected())
-    st.write(H_undirected)
+
     connected_components = [component for component in nx.connected_components(H_undirected) if len(component) > 1]
-    st.write(connected_components)
     filtered_components = [component for component in connected_components if len(component) > 2]
-    st.write(filtered_components)
 
     # Calculate Eigenvector Centrality for Each Component
+    centrality_measure = nx.eigenvector_centrality  # Example: using eigenvector centrality
     central_locations = []
     for component in filtered_components:
         subgraph = H.subgraph(component)
-        eigenvector_centrality = nx.eigenvector_centrality(subgraph, max_iter=1500)
-        most_central_node = max(eigenvector_centrality, key=eigenvector_centrality.get)
+        centrality = centrality_measure(subgraph, max_iter=1500)
+        most_central_node = max(centrality, key=centrality.get)
         central_locations.append(most_central_node)
 
     # Check if 'fuzzy' exists in st.session_state.all_loi
