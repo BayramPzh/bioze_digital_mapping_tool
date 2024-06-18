@@ -166,21 +166,21 @@ def get_sites(df, w, g, idx,
     df.dropna(subset=[score_column], inplace=True)  # Handle missing values
     df = df.drop_duplicates(subset='hex9').set_index('hex9')
 
-    # Informative logging
-    st.write("Dataframe after dropping duplicates and setting index:")
-    st.write("Index of df dataframe:")
-    st.write(df.index)
-    st.write("Head of df dataframe:")
-    st.write(df.head())
+    # # Informative logging
+    # st.write("Dataframe after dropping duplicates and setting index:")
+    # st.write("Index of df dataframe:")
+    # st.write(df.index)
+    # st.write("Head of df dataframe:")
+    # st.write(df.head())
 
     # Ensure all "hex9" values from df are present in the index
     unique_idx = df.index.intersection(idx.index)
 
-    # Informative logging
-    st.write("Index of idx dataframe:")
-    st.write(idx.index)
-    st.write("Head of idx dataframe:")
-    st.write(idx.head())
+    # # Informative logging
+    # st.write("Index of idx dataframe:")
+    # st.write(idx.index)
+    # st.write("Head of idx dataframe:")
+    # st.write(idx.head())
 
     if unique_idx.empty:
         raise ValueError("No overlapping 'hex9' values found between df and idx. Check data quality and 'hex9' formatting.")
@@ -193,6 +193,7 @@ def get_sites(df, w, g, idx,
 
     if 'geometry' in df.columns:
         df['geometry'] = gpd.GeoSeries(df['geometry']).to_shapely()
+    st.write(df[score_column])
 
     # Spatial Analysis with Error Handling (using a try-except block)
     try:
@@ -422,5 +423,5 @@ def perform_suitability_analysis():
 
 # Run the Streamlit app
 if __name__ == "__main__":
-    idx = load_gdf('./app_data/h3_polygons.shp')
+    idx = load_gdf('./app_data/h3_pzh_polygons.shp')
     main(idx)
