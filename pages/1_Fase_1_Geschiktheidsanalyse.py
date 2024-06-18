@@ -13,6 +13,7 @@ import pydeck as pdk
 import streamlit as st
 from pysal.explore import esda
 from pysal.lib import weights
+from libpysal.weights import w_subset
 
 # Importing local application/library specific imports
 from utils.cflp_function import *
@@ -57,9 +58,16 @@ st.markdown(
 def load_data(csv_path):
     """Function to load data from a CSV file."""
     try:
-        return pd.read_csv(csv_path)
+        data = pd.read_csv(csv_path)
+        if data.empty:
+            raise ValueError(f"File {csv_path} is empty.")
+        return data
     except FileNotFoundError:
         raise FileNotFoundError(f"File {csv_path} not found.")
+    except pd.errors.EmptyDataError:
+        raise ValueError(f"No data in file {csv_path}.")
+    except Exception as e:
+        raise Exception(f"An error occurred while reading the file {csv_path}: {str(e)}")
 
 def load_gdf(gdf_path):
     """Function to load a GeoDataFrame from a file."""
@@ -136,8 +144,7 @@ def update_layer(selected_variables, all_arrays, d_to_farm):
     return hex_df
 
 # Filter potential digester locations
-def get_sites(df, w, g, idx,
-              score_column='fuzzy', seed=42) -> pd.DataFrame:
+def get_sites(df, w, g, idx, score_column='fuzzy', seed=42) -> pd.DataFrame:
     """
     Analyzes potential digester locations based on suitability scores and spatial factors.
 
@@ -151,9 +158,6 @@ def get_sites(df, w, g, idx,
 
     Returns:
         pd.DataFrame: DataFrame containing the most central locations within significant suitability clusters.
-
-    Raises:
-        ValueError: If errors occur during data validation, spatial analysis, or no overlapping "hex9" values are found.
     """
 
     # Input Validation
@@ -166,38 +170,34 @@ def get_sites(df, w, g, idx,
     df.dropna(subset=[score_column], inplace=True)  # Handle missing values
     df = df.drop_duplicates(subset='hex9').set_index('hex9')
 
-    # # Informative logging
-    # st.write("Dataframe after dropping duplicates and setting index:")
-    # st.write("Index of df dataframe:")
-    # st.write(df.index)
-    # st.write("Head of df dataframe:")
-    # st.write(df.head())
-
     # Ensure all "hex9" values from df are present in the index
     unique_idx = df.index.intersection(idx.index)
-
-    # # Informative logging
-    # st.write("Index of idx dataframe:")
-    # st.write(idx.index)
-    # st.write("Head of idx dataframe:")
-    # st.write(idx.head())
 
     if unique_idx.empty:
         raise ValueError("No overlapping 'hex9' values found between df and idx. Check data quality and 'hex9' formatting.")
 
     df = df.loc[unique_idx]  # Reindex df based on the intersection
 
-    # Informative logging
-    st.write("Dataframe after reindexing with unique_idx:")
-    st.write(df.head())  # Print to console for debugging
+    # # Informative logging
+    # st.write("Dataframe after reindexing with unique_idx:")
+    # st.write(df.head())  # Print to console for debugging
 
     if 'geometry' in df.columns:
         df['geometry'] = gpd.GeoSeries(df['geometry']).to_shapely()
-    st.write(df[score_column])
+    # st.write(df[score_column])
+
+    w_subset_result = w_subset(w, df.index)
+
+    # Print shapes for debugging
+    st.write(f"Shape of df[score_column]: {df[score_column].shape}")
+    st.write(f"Number of regions in w_subset_result: {w_subset_result.n}")
+    
+    missing_indices = set(df[score_column].index) - set(idx.index)
+    st.write(missing_indices)
 
     # Spatial Analysis with Error Handling (using a try-except block)
     try:
-        lisa = esda.Moran_Local(df[score_column], w, seed=seed)
+        lisa = esda.Moran_Local(df[score_column], w_subset_result, seed=seed)
     except ValueError as e:
         raise ValueError(f"Error computing Moran's I: {str(e)}") from e  # Propagate original error
 
@@ -221,17 +221,13 @@ def get_sites(df, w, g, idx,
         central_locations.append(most_central_node)
 
     # Check if 'fuzzy' exists in st.session_state.all_loi
-    if 'fuzzy' in st.session_state.all_loi.columns:
+    if 'fuzzy' in st.session_state.all_loi.columns and st.session_state.all_loi['fuzzy'] is not None:
         if not st.session_state.all_loi['fuzzy'].empty:
             st.session_state.all_loi = df.loc[central_locations].reset_index()
         else:
             st.write("st.session_state.all_loi['fuzzy'] is empty.")
     else:
         st.write("'fuzzy' does not exist in st.session_state.all_loi.")
-
-
-
-
 
 #####
 
@@ -260,26 +256,18 @@ def generate_pydeck(df, view_state=VIEW_STATE):
 def generate_colormap_legend(label_left='Far', label_right='Near', cmap=plt.get_cmap(COLORMAP)):
     gradient = np.linspace(0, 1, 256)
     gradient = np.vstack((gradient, gradient))
-
     fig, ax = plt.subplots(figsize=(4, 0.5))
     ax.imshow(gradient, aspect='auto', cmap=cmap)
-    ax.axis('off') 
-
+    ax.axis('off')
     ax.text(-10, 0.5, label_left, verticalalignment='center', horizontalalignment='right', fontsize=12)
     ax.text(266, 0.5, label_right, verticalalignment='center', horizontalalignment='left', fontsize=12)
-
     buffer = BytesIO()
     fig.savefig(buffer, format='png', bbox_inches='tight', pad_inches=0)
     buffer.seek(0)
     image_png = buffer.getvalue()
     plt.close(fig)
     image_base64 = base64.b64encode(image_png).decode()
-
-    legend_html = f'''
-        <div style="width: 100%; height: 300px; overflow: auto; padding: 10px;">
-            <img src="data:image/png;base64,{image_base64}" alt="Colorbar" style="max-width: 100%; max-height: 100%; height: auto; width: auto; display: block; margin-left: auto; margin-right: auto;">
-        </div>
-    '''
+    legend_html = f''' <div style="width: 100%; height: 300px; overflow: auto; padding: 10px;"> <img src="data:image/png;base64,{image_base64}" alt="Colorbar" style="max-width: 100%; max-height: 100%; height: auto; width: auto; display: block; margin-left: auto; margin-right: auto;"> </div> '''
     return legend_html
 
 variable_legend_html = generate_colormap_legend(label_left='Minst Geschikt (0)', label_right='Meest Geschikt (1)',)
@@ -380,7 +368,7 @@ def perform_suitability_analysis():
 
         # Improved data handling in get_sites
         all_loi = get_sites(hex_df, st.session_state.w, st.session_state.g, idx)
-        if not all_loi.empty:
+        if all_loi is not None and not all_loi.empty:
             st.session_state.all_loi = all_loi
             fig = ff.create_distplot([all_loi['fuzzy'].tolist()], ['Distribution'], show_hist=False, bin_size=0.02)
             fig.update_layout(autosize=True, width=600, height=400)
