@@ -87,7 +87,7 @@ d_to_inlet = load_data(DATA_PATHS['inlet'])
 
 # Checking if data is loaded correctly
 if d_to_farm is None or d_to_road is None or d_to_industry is None or d_to_nature is None or d_to_water is None or d_to_urban is None or d_to_inlet is None:
-    print("Error loading data.")
+    st.write("Error loading data.")
     exit()
 
 #####
@@ -142,6 +142,10 @@ def update_layer(selected_variables, all_arrays, d_to_farm):
     apply_color_mapping(hex_df, 'fuzzy', color_mapping)
     hex_df['fuzzy'] = hex_df['fuzzy'].round(3)
     return hex_df
+
+
+
+
 
 # # Filter potential digester locations
 # def get_sites(df, w, g, idx, score_column='fuzzy', seed=42) -> pd.DataFrame:
@@ -281,7 +285,7 @@ def get_sites(df, w, g, idx, score_column: str = 'fuzzy', seed: int = 42) -> pd.
     H = g.subgraph(significant_locations)
     H_undirected = nx.Graph(H.to_undirected())
     filtered_components = [component for component in nx.connected_components(H_undirected) if len(component) > 2]
-    st.write(filtered_components)
+    # st.write(filtered_components)
     
     # Calculate centrality for each component (optional - uncomment to implement)
     # centrality_measure = nx.eigenvector_centrality
@@ -293,6 +297,11 @@ def get_sites(df, w, g, idx, score_column: str = 'fuzzy', seed: int = 42) -> pd.
     #     central_locations.append(most_central_node)
 
     return df[df.index.isin(significant_locations)]  # Return DataFrame with significant locations
+
+
+
+
+
 
 
 #####
@@ -348,7 +357,7 @@ def get_layers(hex_df):
         stroked=True,
         filled=True,
         extruded=False,
-        opacity=0.6,
+        opacity=0.1,
         get_hexagon="hex9",
         get_fill_color='color', 
     )
@@ -454,19 +463,20 @@ def perform_suitability_analysis():
     hex_df = update_layer(selected_variables, all_arrays, d_to_farm)
     layers = get_layers(hex_df)
     plot_result(st.session_state.fig)
-
+    
     loi_plot = pdk.Layer(
         "H3HexagonLayer",
-        st.session_state.all_loi,
+        st.session_state.all_loi.reset_index(),
         pickable=True,
         stroked=True,
         filled=True,
         extruded=False,
-        opacity=0.6,
+        opacity=0.7,
         get_hexagon="hex9",
-        get_fill_color=[0, 0, 0, 0], 
+        get_fill_color=[0, 255, 0], 
         get_line_color=[0, 255, 0],
         line_width_min_pixels=2)
+
     layers.append(loi_plot)
     
     deck = pdk.Deck(layers=layers, initial_view_state=VIEW_STATE, tooltip={"text": "Suitability: {fuzzy}"})
