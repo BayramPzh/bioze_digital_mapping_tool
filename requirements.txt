@@ -22,4 +22,5 @@ fastjsonschema
 argon2-cffi
 seaborn
 IPython
-comm
+requests
+Pool
