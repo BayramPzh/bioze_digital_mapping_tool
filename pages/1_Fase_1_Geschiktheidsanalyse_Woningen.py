@@ -25,7 +25,8 @@ PADDING = 0
 COLORMAP = 'magma'
 VIEW_STATE = pdk.ViewState(longitude=4.390, latitude=51.891, zoom=8, bearing=0, pitch=0)
 DATA_PATHS = {
-    'farm': './hex/aantal_eenpersoonshoudens.csv',
+    # 'farm': './hex/aantal_eenpersoonshoudens.csv',
+    'farm': './standalone/cbs_2022_h3.csv',
     'road': './hex/aantal_huurwoningen_in_bezit_woningcorporaties.csv',
     'industry': './hex/aantal_inwoners.csv',
     'nature': './hex/aantal_meergezins_woningen.csv',
