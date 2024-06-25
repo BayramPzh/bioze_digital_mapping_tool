@@ -3,3 +3,6 @@ osm_network/G_e.dbf
 standalone/cbs_2022.zip
 standalone/cbs_2022/cbs_vk100_2022_v1.gpkg
 standalone/clipped.geojson
+standalone/cbs_2022_h3.csv
+standalone/cbs2_2022_h3.csv
+standalone/cbs_2022_h3.csv
