@@ -26,13 +26,20 @@ COLORMAP = 'magma'
 VIEW_STATE = pdk.ViewState(longitude=4.390, latitude=51.891, zoom=8, bearing=0, pitch=0)
 DATA_PATHS = {
     # 'farm': './hex/aantal_eenpersoonshoudens.csv',
-    'farm': './standalone/cbs_2022_h3.csv',
-    'road': './hex/aantal_huurwoningen_in_bezit_woningcorporaties.csv',
-    'industry': './hex/aantal_inwoners.csv',
-    'nature': './hex/aantal_meergezins_woningen.csv',
-    'water': './hex/aantal_niet_bewoonde_woningen.csv',
-    'urban': './hex/aantal_woningen_bouwjaar_voor_1945.csv',
-    'inlet': './hex/aantal_woningen.csv',
+    # 'road': './hex/aantal_huurwoningen_in_bezit_woningcorporaties.csv',
+    # 'industry': './hex/aantal_inwoners.csv',
+    # 'nature': './hex/aantal_meergezins_woningen.csv',
+    # 'water': './hex/aantal_niet_bewoonde_woningen.csv',
+    # 'urban': './hex/aantal_woningen_bouwjaar_voor_1945.csv',
+    # 'inlet': './hex/aantal_woningen.csv',
+
+    'farm': './standalone/outputs/aantal_eenpersoonshuishoudens_h3.csv',
+    'road': './standalone/outputs/aantal_huurwoningen_in_bezit_woningcorporaties_h3.csv',
+    'industry': './standalone/outputs/aantal_inwoners_h3.csv',
+    'nature': './standalone/outputs/aantal_meergezins_woningen_h3.csv',
+    'water': './standalone/outputs/aantal_niet_bewoonde_woningen_h3.csv',
+    'urban': './standalone/outputs/aantal_woningen_bouwjaar_voor_1945_h3.csv',
+    'inlet': './standalone/outputs/aantal_woningen_h3.csv',
 }
 
 # Generating colormap
@@ -398,9 +405,9 @@ def initialize_session_state(idx):
 
 ### STAP 2
 def display_intro_text():
-    st.markdown("### Fase 1: Geschiktheidsanalyse - Potentiële Locaties voor Grootschalige Vergisters")
+    st.markdown("### Fase 1: Geschiktheidsanalyse - Potentiele locaties voor nieuwbouw projecten")
     st.markdown(
-        "Bekijk de onderstaande kaarten, elk vertegenwoordigt een vooraf geselecteerd criterium dat essentieel wordt geacht voor het bepalen van de geschiktheid van een gebied voor grootschalige vergisters.  "
+        "Bekijk de onderstaande kaarten, elk vertegenwoordigt een vooraf geselecteerd criterium dat essentieel wordt geacht voor het bepalen van de geschiktheid van een gebied voor nieuwbouw projecten.  "
         " Elk gebied in de regio krijgt een geschiktheidsscore tussen 0 en 1, waarbij 0 het minst geschikt en 1 het meest geschikt vertegenwoordigt.  "
         "<br>Tip: Klik op het vraagtekenpictogram :grey_question: boven elke kaart voor meer informatie.",
         unsafe_allow_html=True
@@ -455,7 +462,7 @@ def perform_suitability_analysis():
     st.markdown("### **Geschiktheidskaart**")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown(f"**Aantal Potentiële Locaties: {len(st.session_state['all_loi'])}**")
+        st.markdown(f"**Aantal Potentiële Locaties voor nieuwbouw projecten: {len(st.session_state['all_loi'])}**")
 
     if st.sidebar.button(':two: Resultaat Opslaan & Ga naar Fase 2', help="Klik om de huidige gefilterde locaties op te slaan voor verder onderzoek in ***Fase 2: Beleid Verkenner***."):
         st.session_state.loi = st.session_state.all_loi
